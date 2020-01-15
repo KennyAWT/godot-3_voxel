@@ -3,7 +3,8 @@
 
 #include "../util/float_buffer_3d.h"
 #include "voxel_generator.h"
-#include <modules/opensimplex/open_simplex_noise.h>
+#include <modules/noise/fast_noise.h>
+#include <modules/noise/open_simplex_noise.h>
 
 class VoxelGeneratorNoise : public VoxelGenerator {
 	GDCLASS(VoxelGeneratorNoise, VoxelGenerator)
@@ -13,8 +14,8 @@ public:
 	VoxelBuffer::ChannelId get_channel() const;
 	int get_used_channels_mask() const override;
 
-	void set_noise(Ref<OpenSimplexNoise> noise);
-	Ref<OpenSimplexNoise> get_noise() const;
+	void set_noise(Ref<Noise> noise);
+	Ref<Noise> get_noise() const;
 
 	void set_height_start(real_t y);
 	real_t get_height_start() const;
@@ -29,7 +30,7 @@ protected:
 
 private:
 	VoxelBuffer::ChannelId _channel = VoxelBuffer::CHANNEL_SDF;
-	Ref<OpenSimplexNoise> _noise;
+	Ref<Noise> _noise;
 	FloatBuffer3D _noise_buffer;
 	float _height_start = 0;
 	float _height_range = 300;
