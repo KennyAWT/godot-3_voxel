@@ -197,6 +197,7 @@ void VoxelGeneratorNoise::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("set_channel", "channel"), &VoxelGeneratorNoise::set_channel);
 	ClassDB::bind_method(D_METHOD("get_channel"), &VoxelGeneratorNoise::get_channel);
 
+	ADD_PROPERTY(PropertyInfo(Variant::INT, "channel", PROPERTY_HINT_ENUM, VoxelBuffer::CHANNEL_ID_HINT_STRING), "set_channel", "get_channel");
 	ADD_PROPERTY(PropertyInfo(Variant::OBJECT, "noise", PROPERTY_HINT_RESOURCE_TYPE, "Noise"), "set_noise", "get_noise");
 >>>>>>> Support Godot FastNoise
 	ADD_PROPERTY(PropertyInfo(Variant::REAL, "height_start"), "set_height_start", "get_height_start");

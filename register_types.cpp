@@ -37,6 +37,15 @@ void register_voxel_types() {
 
 	// Streams
 	ClassDB::register_class<VoxelStream>();
+<<<<<<< HEAD
+=======
+	ClassDB::register_class<VoxelStreamTest>();
+	ClassDB::register_class<VoxelStreamHeightmap>();
+	ClassDB::register_class<VoxelStreamImage>();
+	ClassDB::register_class<VoxelStreamNoise>();
+	ClassDB::register_class<VoxelStreamNoise2D>();
+	ClassDB::register_class<VoxelStreamFastNoiseSIMD>();
+>>>>>>> Support Godot FastNoiseSIMD (only LOD0 works)
 	ClassDB::register_class<VoxelStreamFile>();
 	ClassDB::register_class<VoxelStreamBlockFiles>();
 	ClassDB::register_class<VoxelStreamRegionFiles>();
