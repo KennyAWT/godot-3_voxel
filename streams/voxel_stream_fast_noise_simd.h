@@ -16,6 +16,9 @@ public:
 	void set_noise(Ref<FastNoiseSIMD> noise);
 	Ref<FastNoiseSIMD> get_noise() const;
 
+	void set_max_lod(int lod);
+	int get_max_lod() const;
+
 	void set_height_start(real_t y);
 	real_t get_height_start() const;
 
@@ -30,7 +33,7 @@ protected:
 private:
 	VoxelBuffer::ChannelId _channel = VoxelBuffer::CHANNEL_TYPE;
 	Ref<FastNoiseSIMD> _noise;
-	//FloatBuffer3D _noise_buffer;
+	float _max_lod = 5;
 	float _height_start = 0;
 	float _height_range = 300;
 
