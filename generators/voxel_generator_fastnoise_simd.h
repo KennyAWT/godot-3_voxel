@@ -1,14 +1,17 @@
-#ifndef VOXEL_STREAM_FAST_NOISE_SIMD_H
-#define VOXEL_STREAM_FAST_NOISE_SIMD_H
+#ifndef VOXEL_GENERATOR_FASTNOISE_SIMD_H
+#define VOXEL_GENERATOR_FASTNOISE_SIMD_H
 
 #include "../util/float_buffer_3d.h"
-#include "voxel_stream.h"
-#include "modules/noise/fast_noise_simd.h"
+#include "voxel_generator.h"
+#include "modules/noise/fastnoise_simd.h"
 
-class VoxelStreamFastNoiseSIMD : public VoxelStream {
-	GDCLASS(VoxelStreamFastNoiseSIMD, VoxelStream)
+class VoxelGeneratorFastNoiseSIMD : public VoxelGenerator {
+	GDCLASS(VoxelGeneratorFastNoiseSIMD, VoxelGenerator)
 
 public:
+
+	VoxelGeneratorFastNoiseSIMD();
+	~VoxelGeneratorFastNoiseSIMD();
 
 	void set_channel(VoxelBuffer::ChannelId channel);
 	VoxelBuffer::ChannelId get_channel() const;
@@ -22,11 +25,11 @@ public:
 	void set_adjustment(float adjustment);
 	float get_adjustment() const;
 
-	void set_height_start(real_t y);
-	real_t get_height_start() const;
+	void set_height_start(int y);
+	int get_height_start() const;
 
-	void set_height_range(real_t hrange);
-	real_t get_height_range() const;
+	void set_height_range(int hrange);
+	int get_height_range() const;
 
 	void emerge_block(Ref<VoxelBuffer> out_buffer, Vector3i origin_in_voxels, int lod);
 
@@ -36,12 +39,13 @@ protected:
 private:
 	VoxelBuffer::ChannelId _channel = VoxelBuffer::CHANNEL_TYPE;
 	Ref<FastNoiseSIMD> _noise;
+	float* _noise_buffer = nullptr;
 	bool _inverse = false;
 	float _adjustment = 0;
-	float _height_start = 0;
-	float _height_range = 300;
+	int _height_start = 0;
+	int _height_range = 512;
 
 };
 
-#endif // VOXEL_STREAM_NOISE_PLUS_H
+#endif // VOXEL_GENERATOR_FASTNOISE_SIMD_H
 

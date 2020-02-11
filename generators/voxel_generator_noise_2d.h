@@ -2,7 +2,7 @@
 #define VOXEL_GENERATOR_NOISE_2D_H
 
 #include "voxel_generator_heightmap.h"
-#include <modules/opensimplex/open_simplex_noise.h>
+#include <modules/noise/open_simplex_noise.h>
 
 class VoxelGeneratorNoise2D : public VoxelGeneratorHeightmap {
 	GDCLASS(VoxelGeneratorNoise2D, VoxelGeneratorHeightmap)
