@@ -12,11 +12,18 @@ VoxelGeneratorFastNoiseSIMD::~VoxelGeneratorFastNoiseSIMD() {
 
 void VoxelGeneratorFastNoiseSIMD::set_channel(VoxelBuffer::ChannelId channel) {
 	ERR_FAIL_INDEX(channel, VoxelBuffer::MAX_CHANNELS);
-	_channel = channel;
+	if (_channel != channel) {
+		_channel = channel;
+		emit_changed();
+	}
 }
 
 VoxelBuffer::ChannelId VoxelGeneratorFastNoiseSIMD::get_channel() const {
 	return _channel;
+}
+
+int VoxelGeneratorFastNoiseSIMD::get_used_channels_mask() const {
+	return (1 << _channel);
 }
 
 void VoxelGeneratorFastNoiseSIMD::set_noise(Ref<FastNoiseSIMD> noise) {
@@ -59,14 +66,14 @@ int VoxelGeneratorFastNoiseSIMD::get_height_range() const {
 	return _height_range;
 }
 
-void VoxelGeneratorFastNoiseSIMD::emerge_block(Ref<VoxelBuffer> out_buffer, Vector3i origin_in_voxels, int lod) {
-
-	ERR_FAIL_COND(out_buffer.is_null());
+void VoxelGeneratorFastNoiseSIMD::generate_block(VoxelBlockRequest& input) {
+	ERR_FAIL_COND(input.voxel_buffer.is_null());
 	ERR_FAIL_COND(_noise.is_null());
 
+	VoxelBuffer& buffer = **input.voxel_buffer;
+	Vector3i origin_in_voxels = input.origin_in_voxels;
 	FastNoiseSIMD& noise = **_noise;
-	VoxelBuffer& buffer = **out_buffer;
-
+	int lod = input.lod;
 	Vector3i size = buffer.get_size();
 
 	// Allocate noise buffer if not present. Deleted in destructor.

@@ -15,6 +15,7 @@ public:
 
 	void set_channel(VoxelBuffer::ChannelId channel);
 	VoxelBuffer::ChannelId get_channel() const;
+	int get_used_channels_mask() const override;
 
 	void set_noise(Ref<FastNoiseSIMD> noise);
 	Ref<FastNoiseSIMD> get_noise() const;
@@ -31,13 +32,13 @@ public:
 	void set_height_range(int hrange);
 	int get_height_range() const;
 
-	void emerge_block(Ref<VoxelBuffer> out_buffer, Vector3i origin_in_voxels, int lod);
+	void generate_block(VoxelBlockRequest& input) override;
 
 protected:
 	static void _bind_methods();
 
 private:
-	VoxelBuffer::ChannelId _channel = VoxelBuffer::CHANNEL_TYPE;
+	VoxelBuffer::ChannelId _channel = VoxelBuffer::CHANNEL_SDF;
 	Ref<FastNoiseSIMD> _noise;
 	float* _noise_buffer = nullptr;
 	bool _inverse = false;
