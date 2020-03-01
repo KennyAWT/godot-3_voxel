@@ -44,13 +44,9 @@ void register_voxel_types() {
 
 	// Generators
 	ClassDB::register_class<VoxelGenerator>();
-<<<<<<< HEAD
+	ClassDB::register_class<VoxelGeneratorFastNoiseSIMD>();
 	ClassDB::register_class<VoxelGeneratorFlat>();
 	ClassDB::register_class<VoxelGeneratorWaves>();
-=======
-	ClassDB::register_class<VoxelGeneratorTest>();
-	ClassDB::register_class<VoxelGeneratorFastNoiseSIMD>();
->>>>>>> Updates after merge. Also FastNoiseSIMD works with LODs and bias
 	ClassDB::register_class<VoxelGeneratorHeightmap>();
 	ClassDB::register_class<VoxelGeneratorImage>();
 	ClassDB::register_class<VoxelGeneratorNoise2D>();
