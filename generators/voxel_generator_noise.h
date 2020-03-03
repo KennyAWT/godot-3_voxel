@@ -4,6 +4,7 @@
 #include "../util/float_buffer_3d.h"
 #include "voxel_generator.h"
 #include <modules/noise/fastnoise.h>
+#include <modules/noise/fastnoise_simd.h>
 #include <modules/noise/open_simplex_noise.h>
 
 class VoxelGeneratorNoise : public VoxelGenerator {

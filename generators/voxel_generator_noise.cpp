@@ -119,11 +119,9 @@ void VoxelGeneratorNoise::generate_block(VoxelBlockRequest& input) {
 		if (_noise->is_class_ptr(OpenSimplexNoise::get_class_ptr_static())) {
 			iso_scale = static_cast<Ref<OpenSimplexNoise>>(_noise)->get_period() * 0.1;
 			one_minus_persistence = 1.f - static_cast<Ref<OpenSimplexNoise>>(_noise)->get_persistence();
-		}
-		else if (_noise->is_class_ptr(FastNoise::get_class_ptr_static())) {
+		} else if (_noise->is_class_ptr(FastNoise::get_class_ptr_static()) || _noise->is_class_ptr(FastNoiseSIMD::get_class_ptr_static())) {
 			iso_scale = 20.0 / ((lod > 3) ? 2 : 1);
 		}
-
 		for (int z = 0; z < size.z; ++z) {
 			int lz = origin_in_voxels.z + (z << lod);
 
@@ -161,8 +159,10 @@ void VoxelGeneratorNoise::generate_block(VoxelBlockRequest& input) {
 					if (_noise->is_class_ptr(OpenSimplexNoise::get_class_ptr_static())) {
 						OpenSimplexNoise& noise = **static_cast<Ref<OpenSimplexNoise>>(_noise);
 						n = get_shaped_noise(noise, lx, ly, lz, one_minus_persistence, bias);
-					} else {
+					} else if (_noise->is_class_ptr(FastNoise::get_class_ptr_static())) {
 						n = static_cast<Ref<FastNoise>>(_noise)->get_noise_3d(lx, ly, lz);
+					} else if (_noise->is_class_ptr(FastNoiseSIMD::get_class_ptr_static())) {
+						n = static_cast<Ref<FastNoiseSIMD>>(_noise)->get_noise_3d(lx, ly, lz);
 					}
 					d = (n + bias) * iso_scale;
 
@@ -192,7 +192,7 @@ void VoxelGeneratorNoise::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("get_height_range"), &VoxelGeneratorNoise::get_height_range);
 
 	ADD_PROPERTY(PropertyInfo(Variant::INT, "channel", PROPERTY_HINT_ENUM, VoxelBuffer::CHANNEL_ID_HINT_STRING), "set_channel", "get_channel");
-	ADD_PROPERTY(PropertyInfo(Variant::OBJECT, "noise", PROPERTY_HINT_RESOURCE_TYPE, "Noise"), "set_noise", "get_noise");
+	ADD_PROPERTY(PropertyInfo(Variant::OBJECT, "noise", PROPERTY_HINT_RESOURCE_TYPE, "OpenSimplexNoise,FastNoise"), "set_noise", "get_noise");
 
 	ADD_PROPERTY(PropertyInfo(Variant::REAL, "height_start"), "set_height_start", "get_height_start");
 	ADD_PROPERTY(PropertyInfo(Variant::REAL, "height_range"), "set_height_range", "get_height_range");
