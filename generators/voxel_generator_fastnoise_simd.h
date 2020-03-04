@@ -3,7 +3,7 @@
 
 #include "../util/float_buffer_3d.h"
 #include "voxel_generator.h"
-#include "modules/noise/fastnoise_simd.h"
+#include "modules/fastnoise_simd/fastnoise_simd.h"
 
 class VoxelGeneratorFastNoiseSIMD : public VoxelGenerator {
 	GDCLASS(VoxelGeneratorFastNoiseSIMD, VoxelGenerator)

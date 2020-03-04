@@ -1,4 +1,3 @@
-#include <iostream>
 #include "voxel_generator_fastnoise_simd.h"
 
 VoxelGeneratorFastNoiseSIMD::VoxelGeneratorFastNoiseSIMD() {

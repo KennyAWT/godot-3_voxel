@@ -1,4 +1,9 @@
+#include <modules/fastnoise_simd/fastnoise_simd.h>
+#include <modules/noise/fastnoise.h>
+#include <modules/noise/open_simplex_noise.h>
+
 #include "voxel_generator_noise.h"
+
 
 void VoxelGeneratorNoise::set_channel(VoxelBuffer::ChannelId channel) {
 	ERR_FAIL_INDEX(channel, VoxelBuffer::MAX_CHANNELS);
