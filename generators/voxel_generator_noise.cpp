@@ -1,9 +1,14 @@
-#include <modules/fastnoise_simd/fastnoise_simd.h>
+#include <core/os/os.h>
+
 #include <modules/noise/fastnoise.h>
 #include <modules/noise/open_simplex_noise.h>
 
-#include "voxel_generator_noise.h"
+#define FASTNOISESIMD_ENABLED
+#ifdef FASTNOISESIMD_ENABLED
+#include <modules/fastnoise_simd/fastnoise_simd.h>
+#endif
 
+#include "voxel_generator_noise.h"
 
 void VoxelGeneratorNoise::set_channel(VoxelBuffer::ChannelId channel) {
 	ERR_FAIL_INDEX(channel, VoxelBuffer::MAX_CHANNELS);
@@ -83,6 +88,7 @@ static inline float get_shaped_noise(OpenSimplexNoise& noise, float x, float y, 
 }
 
 void VoxelGeneratorNoise::generate_block(VoxelBlockRequest& input) {
+	//uint64_t time = OS::get_singleton()->get_ticks_usec();
 
 	ERR_FAIL_COND(input.voxel_buffer.is_null());
 	ERR_FAIL_COND(_noise.is_null());
@@ -90,6 +96,7 @@ void VoxelGeneratorNoise::generate_block(VoxelBlockRequest& input) {
 	VoxelBuffer& buffer = **input.voxel_buffer;
 	Vector3i origin_in_voxels = input.origin_in_voxels;
 	int lod = input.lod;
+	const Vector3i size = buffer.get_size();
 
 	int isosurface_lower_bound = static_cast<int>(Math::floor(_height_start));
 	int isosurface_upper_bound = static_cast<int>(Math::ceil(_height_start + _height_range));
@@ -106,7 +113,7 @@ void VoxelGeneratorNoise::generate_block(VoxelBlockRequest& input) {
 			buffer.clear_channel(_channel, air_type);
 		}
 
-	} else if (origin_in_voxels.y + (buffer.get_size().y << lod) < isosurface_lower_bound) {
+	} else if (origin_in_voxels.y + (size.y << lod) < isosurface_lower_bound) {
 
 		// Fill with matter
 		if (_channel == VoxelBuffer::CHANNEL_SDF) {
@@ -116,16 +123,18 @@ void VoxelGeneratorNoise::generate_block(VoxelBlockRequest& input) {
 		}
 
 	} else {
-
-		const Vector3i size = buffer.get_size();
 		const float height_range_inv = 1.f / _height_range;
 		float iso_scale = 1.0;
 		float one_minus_persistence = 0.0;
 		if (_noise->is_class_ptr(OpenSimplexNoise::get_class_ptr_static())) {
 			iso_scale = static_cast<Ref<OpenSimplexNoise>>(_noise)->get_period() * 0.1;
 			one_minus_persistence = 1.f - static_cast<Ref<OpenSimplexNoise>>(_noise)->get_persistence();
-		} else if (_noise->is_class_ptr(FastNoise::get_class_ptr_static()) || _noise->is_class_ptr(FastNoiseSIMD::get_class_ptr_static())) {
-			iso_scale = 20.0 / ((lod > 3) ? 2 : 1);
+		} else if (_noise->is_class_ptr(FastNoise::get_class_ptr_static()) 
+#ifdef FASTNOISESIMD_ENABLED
+				|| _noise->is_class_ptr(FastNoiseSIMD::get_class_ptr_static())
+#endif
+			) {
+			iso_scale = 20.f;
 		}
 		for (int z = 0; z < size.z; ++z) {
 			int lz = origin_in_voxels.z + (z << lod);
@@ -166,8 +175,10 @@ void VoxelGeneratorNoise::generate_block(VoxelBlockRequest& input) {
 						n = get_shaped_noise(noise, lx, ly, lz, one_minus_persistence, bias);
 					} else if (_noise->is_class_ptr(FastNoise::get_class_ptr_static())) {
 						n = static_cast<Ref<FastNoise>>(_noise)->get_noise_3d(lx, ly, lz);
+#ifdef FASTNOISESIMD_ENABLED
 					} else if (_noise->is_class_ptr(FastNoiseSIMD::get_class_ptr_static())) {
 						n = static_cast<Ref<FastNoiseSIMD>>(_noise)->get_noise_3d(lx, ly, lz);
+#endif
 					}
 					d = (n + bias) * iso_scale;
 
@@ -180,6 +191,7 @@ void VoxelGeneratorNoise::generate_block(VoxelBlockRequest& input) {
 			}
 		}
 	}
+	//printf("VGN: Noise generation time: %ld us\n", OS::get_singleton()->get_ticks_usec()-time);
 }
 
 void VoxelGeneratorNoise::_bind_methods() {

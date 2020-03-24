@@ -44,7 +44,9 @@ void register_voxel_types() {
 
 	// Generators
 	ClassDB::register_class<VoxelGenerator>();
+#ifdef FASTNOISESIMD_ENABLED
 	ClassDB::register_class<VoxelGeneratorFastNoiseSIMD>();
+#endif
 	ClassDB::register_class<VoxelGeneratorFlat>();
 	ClassDB::register_class<VoxelGeneratorWaves>();
 	ClassDB::register_class<VoxelGeneratorHeightmap>();
