@@ -1,9 +1,11 @@
 #include "register_types.h"
 #include "edition/voxel_tool.h"
-#include "generators/voxel_generator_fastnoise_simd.h"
 #include "generators/voxel_generator_flat.h"
 #include "generators/voxel_generator_heightmap.h"
 #include "generators/voxel_generator_image.h"
+#ifdef FASTNOISESIMD_ENABLED
+#include "generators/voxel_generator_fastnoise_simd.h"
+#endif
 #include "generators/voxel_generator_noise.h"
 #include "generators/voxel_generator_noise_2d.h"
 #include "generators/voxel_generator_waves.h"
@@ -44,16 +46,15 @@ void register_voxel_types() {
 
 	// Generators
 	ClassDB::register_class<VoxelGenerator>();
-#ifdef FASTNOISESIMD_ENABLED
-	ClassDB::register_class<VoxelGeneratorFastNoiseSIMD>();
-#endif
 	ClassDB::register_class<VoxelGeneratorFlat>();
 	ClassDB::register_class<VoxelGeneratorWaves>();
 	ClassDB::register_class<VoxelGeneratorHeightmap>();
 	ClassDB::register_class<VoxelGeneratorImage>();
 	ClassDB::register_class<VoxelGeneratorNoise2D>();
 	ClassDB::register_class<VoxelGeneratorNoise>();
-
+#ifdef FASTNOISESIMD_ENABLED
+	ClassDB::register_class<VoxelGeneratorFastNoiseSIMD>();
+#endif
 	// Helpers
 	ClassDB::register_class<VoxelBoxMover>();
 	ClassDB::register_class<VoxelRaycastResult>();

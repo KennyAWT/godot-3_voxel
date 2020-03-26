@@ -3,7 +3,6 @@
 #include <modules/noise/fastnoise.h>
 #include <modules/noise/open_simplex_noise.h>
 
-#define FASTNOISESIMD_ENABLED
 #ifdef FASTNOISESIMD_ENABLED
 #include <modules/fastnoise_simd/fastnoise_simd.h>
 #endif
@@ -26,12 +25,12 @@ int VoxelGeneratorNoise::get_used_channels_mask() const {
 	return (1 << _channel);
 }
 
-void VoxelGeneratorNoise::set_noise(Ref<Noise> noise) {
-	_noise = noise;
+void VoxelGeneratorNoise::set_bias_mode(VoxelGeneratorNoise::BiasMode mode){
+    _bias_mode = mode;
 }
 
-Ref<Noise> VoxelGeneratorNoise::get_noise() const {
-	return _noise;
+VoxelGeneratorNoise::BiasMode VoxelGeneratorNoise::get_bias_mode() const {
+    return _bias_mode;
 }
 
 void VoxelGeneratorNoise::set_height_start(real_t y) {
@@ -51,6 +50,43 @@ void VoxelGeneratorNoise::set_height_range(real_t hrange) {
 
 real_t VoxelGeneratorNoise::get_height_range() const {
 	return _height_range;
+}
+
+void VoxelGeneratorNoise::set_iso_scale(float scale){
+    _iso_scale = scale;
+}
+
+float VoxelGeneratorNoise::get_iso_scale() const {
+    return _iso_scale;
+}
+
+void VoxelGeneratorNoise::set_invert(bool invert){
+	if (_invert != invert) {
+		_noise_offset *= -1.f;
+		_change_notify();
+
+	}
+    _invert = invert;
+}
+
+bool VoxelGeneratorNoise::get_invert() const {
+    return _invert;
+}
+
+void VoxelGeneratorNoise::set_noise_offset(float noise_offset){
+    _noise_offset = noise_offset;
+}
+
+float VoxelGeneratorNoise::get_noise_offset() const {
+    return _noise_offset;
+}
+
+void VoxelGeneratorNoise::set_noise(Ref<Noise> noise) {
+	_noise = noise;
+}
+
+Ref<Noise> VoxelGeneratorNoise::get_noise() const {
+	return _noise;
 }
 
 // For isosurface use cases, noise can be "shaped" by calculating only the first octave,
@@ -104,7 +140,7 @@ void VoxelGeneratorNoise::generate_block(VoxelBlockRequest& input) {
 	const int air_type = 0;
 	const int matter_type = 1;
 
-	if (origin_in_voxels.y >= isosurface_upper_bound) {
+	if (_bias_mode!=None && origin_in_voxels.y >= isosurface_upper_bound) {
 
 		// Fill with air
 		if (_channel == VoxelBuffer::CHANNEL_SDF) {
@@ -113,7 +149,7 @@ void VoxelGeneratorNoise::generate_block(VoxelBlockRequest& input) {
 			buffer.clear_channel(_channel, air_type);
 		}
 
-	} else if (origin_in_voxels.y + (size.y << lod) < isosurface_lower_bound) {
+	} else if (_bias_mode!=None && origin_in_voxels.y + (size.y << lod) < isosurface_lower_bound) {
 
 		// Fill with matter
 		if (_channel == VoxelBuffer::CHANNEL_SDF) {
@@ -124,18 +160,13 @@ void VoxelGeneratorNoise::generate_block(VoxelBlockRequest& input) {
 
 	} else {
 		const float height_range_inv = 1.f / _height_range;
-		float iso_scale = 1.0;
+        float d = 0.0f;
+        float bias=0.f;
 		float one_minus_persistence = 0.0;
 		if (_noise->is_class_ptr(OpenSimplexNoise::get_class_ptr_static())) {
-			iso_scale = static_cast<Ref<OpenSimplexNoise>>(_noise)->get_period() * 0.1;
+			_iso_scale = static_cast<Ref<OpenSimplexNoise>>(_noise)->get_period() * 0.1;
 			one_minus_persistence = 1.f - static_cast<Ref<OpenSimplexNoise>>(_noise)->get_persistence();
-		} else if (_noise->is_class_ptr(FastNoise::get_class_ptr_static()) 
-#ifdef FASTNOISESIMD_ENABLED
-				|| _noise->is_class_ptr(FastNoiseSIMD::get_class_ptr_static())
-#endif
-			) {
-			iso_scale = 20.f;
-		}
+		} 
 		for (int z = 0; z < size.z; ++z) {
 			int lz = origin_in_voxels.z + (z << lod);
 
@@ -145,7 +176,7 @@ void VoxelGeneratorNoise::generate_block(VoxelBlockRequest& input) {
 				for (int y = 0; y < size.y; ++y) {
 					int ly = origin_in_voxels.y + (y << lod);
 
-					if (ly < isosurface_lower_bound) {
+					if (_bias_mode!=None && ly < isosurface_lower_bound) {
 						// Below is only matter
 						if (_channel == VoxelBuffer::CHANNEL_SDF) {
 							buffer.set_voxel_f(-1, x, y, z, _channel);
@@ -154,7 +185,7 @@ void VoxelGeneratorNoise::generate_block(VoxelBlockRequest& input) {
 						}
 						continue;
 
-					} else if (ly >= isosurface_upper_bound) {
+					} else if (_bias_mode!=None && ly >= isosurface_upper_bound) {
 						// Above is only air
 						if (_channel == VoxelBuffer::CHANNEL_SDF) {
 							buffer.set_voxel_f(1, x, y, z, _channel);
@@ -166,10 +197,16 @@ void VoxelGeneratorNoise::generate_block(VoxelBlockRequest& input) {
 
 					// Bias is what makes noise become "matter" the lower we go, and "air" the higher we go
 					float t = (ly - _height_start) * height_range_inv;
-					float bias = 2.0 * t - 1.0;
-					float d = 0.0;
-					float n = 0.0;
+                    if(_bias_mode==Linear) {
+                        bias = 2.f * t - 1.f;
+                    } else if (_bias_mode==Bounded) {
+                        bias = Math::smoothstep(0.f, .1f, t) + Math::smoothstep(.9f, 1.f, t)-1.f;
+                    } else { //_bias_mode==None
+                        bias = 0.f;
+                    }
+
 					// We are near the isosurface, need to calculate noise value
+					float n = 0.0;
 					if (_noise->is_class_ptr(OpenSimplexNoise::get_class_ptr_static())) {
 						OpenSimplexNoise& noise = **static_cast<Ref<OpenSimplexNoise>>(_noise);
 						n = get_shaped_noise(noise, lx, ly, lz, one_minus_persistence, bias);
@@ -180,8 +217,14 @@ void VoxelGeneratorNoise::generate_block(VoxelBlockRequest& input) {
 						n = static_cast<Ref<FastNoiseSIMD>>(_noise)->get_noise_3d(lx, ly, lz);
 #endif
 					}
-					d = (n + bias) * iso_scale;
 
+                    // Invert noise value
+                    if(_invert)
+                        d = (_noise_offset-n + bias) * _iso_scale;
+                    else
+                        d = (n + _noise_offset + bias) * _iso_scale;
+
+                    // Set voxel
 					if (_channel == VoxelBuffer::CHANNEL_SDF) {
 						buffer.set_voxel_f(d, x, y, z, _channel);
 					} else if (_channel == VoxelBuffer::CHANNEL_TYPE && d < 0) {
@@ -198,19 +241,34 @@ void VoxelGeneratorNoise::_bind_methods() {
 
 	ClassDB::bind_method(D_METHOD("set_channel", "channel"), &VoxelGeneratorNoise::set_channel);
 	ClassDB::bind_method(D_METHOD("get_channel"), &VoxelGeneratorNoise::get_channel);
+	ADD_PROPERTY(PropertyInfo(Variant::INT, "channel", PROPERTY_HINT_ENUM, VoxelBuffer::CHANNEL_ID_HINT_STRING), "set_channel", "get_channel");
 
-	ClassDB::bind_method(D_METHOD("set_noise", "noise"), &VoxelGeneratorNoise::set_noise);
-	ClassDB::bind_method(D_METHOD("get_noise"), &VoxelGeneratorNoise::get_noise);
+    ClassDB::bind_method(D_METHOD("set_bias_mode", "mode"), &VoxelGeneratorNoise::set_bias_mode);
+    ClassDB::bind_method(D_METHOD("get_bias_mode"), &VoxelGeneratorNoise::get_bias_mode);
+    ADD_PROPERTY(PropertyInfo(Variant::INT, "bias_mode", PROPERTY_HINT_ENUM, "Linear,Bounded,None"), "set_bias_mode", "get_bias_mode");
 
 	ClassDB::bind_method(D_METHOD("set_height_start", "hstart"), &VoxelGeneratorNoise::set_height_start);
 	ClassDB::bind_method(D_METHOD("get_height_start"), &VoxelGeneratorNoise::get_height_start);
+	ADD_PROPERTY(PropertyInfo(Variant::REAL, "height_start"), "set_height_start", "get_height_start");
 
 	ClassDB::bind_method(D_METHOD("set_height_range", "hrange"), &VoxelGeneratorNoise::set_height_range);
 	ClassDB::bind_method(D_METHOD("get_height_range"), &VoxelGeneratorNoise::get_height_range);
+	ADD_PROPERTY(PropertyInfo(Variant::REAL, "height_range"), "set_height_range", "get_height_range");
 
-	ADD_PROPERTY(PropertyInfo(Variant::INT, "channel", PROPERTY_HINT_ENUM, VoxelBuffer::CHANNEL_ID_HINT_STRING), "set_channel", "get_channel");
+    ClassDB::bind_method(D_METHOD("set_iso_scale", "scale"), &VoxelGeneratorNoise::set_iso_scale);
+    ClassDB::bind_method(D_METHOD("get_iso_scale"), &VoxelGeneratorNoise::get_iso_scale);
+    ADD_PROPERTY(PropertyInfo(Variant::REAL, "iso_scale", PROPERTY_HINT_RANGE, ".1,100,0.1"), "set_iso_scale", "get_iso_scale");
+
+    ClassDB::bind_method(D_METHOD("set_invert", "invert"), &VoxelGeneratorNoise::set_invert);
+    ClassDB::bind_method(D_METHOD("get_invert"), &VoxelGeneratorNoise::get_invert);
+    ADD_PROPERTY(PropertyInfo(Variant::BOOL, "invert"), "set_invert", "get_invert");
+
+    ClassDB::bind_method(D_METHOD("set_noise_offset", "noise_offset"), &VoxelGeneratorNoise::set_noise_offset);
+    ClassDB::bind_method(D_METHOD("get_noise_offset"), &VoxelGeneratorNoise::get_noise_offset);
+    ADD_PROPERTY(PropertyInfo(Variant::REAL, "noise_offset", PROPERTY_HINT_RANGE, "-2,2,0.01"), "set_noise_offset", "get_noise_offset");
+
+	ClassDB::bind_method(D_METHOD("set_noise", "noise"), &VoxelGeneratorNoise::set_noise);
+	ClassDB::bind_method(D_METHOD("get_noise"), &VoxelGeneratorNoise::get_noise);
 	ADD_PROPERTY(PropertyInfo(Variant::OBJECT, "noise", PROPERTY_HINT_RESOURCE_TYPE, "Noise"), "set_noise", "get_noise");
 
-	ADD_PROPERTY(PropertyInfo(Variant::REAL, "height_start"), "set_height_start", "get_height_start");
-	ADD_PROPERTY(PropertyInfo(Variant::REAL, "height_range"), "set_height_range", "get_height_range");
 }

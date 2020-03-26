@@ -1,7 +1,7 @@
+#ifdef FASTNOISESIMD_ENABLED
+
 #include <core/os/os.h>
 #include "voxel_generator_fastnoise_simd.h"
-
-#ifdef FASTNOISESIMD_ENABLED
 
 VoxelGeneratorFastNoiseSIMD::VoxelGeneratorFastNoiseSIMD() {
 }
@@ -28,44 +28,12 @@ int VoxelGeneratorFastNoiseSIMD::get_used_channels_mask() const {
 	return (1 << _channel);
 }
 
-void VoxelGeneratorFastNoiseSIMD::set_noise(Ref<FastNoiseSIMD> noise) {
-	_noise = noise;
-}
-
-Ref<FastNoiseSIMD> VoxelGeneratorFastNoiseSIMD::get_noise() const {
-	return _noise;
-}
-
-void VoxelGeneratorFastNoiseSIMD::set_invert(bool invert){
-	_invert = invert;
-}
-
-bool VoxelGeneratorFastNoiseSIMD::get_invert() const {
-	return _invert;
-}
-
 void VoxelGeneratorFastNoiseSIMD::set_bias_mode(VoxelGeneratorFastNoiseSIMD::BiasMode mode){
 	_bias_mode = mode;
 }
 
 VoxelGeneratorFastNoiseSIMD::BiasMode VoxelGeneratorFastNoiseSIMD::get_bias_mode() const {
 	return _bias_mode;
-}
-
-void VoxelGeneratorFastNoiseSIMD::set_iso_scale(float scale){
-	_iso_scale = scale;
-}
-
-float VoxelGeneratorFastNoiseSIMD::get_iso_scale() const {
-	return _iso_scale;
-}
-
-void VoxelGeneratorFastNoiseSIMD::set_value_adjustment(float value_adjustment){
-	_value_adjustment = value_adjustment;
-}
-
-float VoxelGeneratorFastNoiseSIMD::get_value_adjustment() const {
-	return _value_adjustment;
 }
 
 void VoxelGeneratorFastNoiseSIMD::set_height_start(int y) {
@@ -82,6 +50,42 @@ void VoxelGeneratorFastNoiseSIMD::set_height_range(int hrange) {
 
 int VoxelGeneratorFastNoiseSIMD::get_height_range() const {
 	return _height_range;
+}
+
+void VoxelGeneratorFastNoiseSIMD::set_iso_scale(float scale){
+	_iso_scale = scale;
+}
+
+float VoxelGeneratorFastNoiseSIMD::get_iso_scale() const {
+	return _iso_scale;
+}
+
+void VoxelGeneratorFastNoiseSIMD::set_invert(bool invert){
+	if (_invert != invert) {
+		_noise_offset *= -1;
+		_change_notify();
+	}
+	_invert = invert;
+}
+
+bool VoxelGeneratorFastNoiseSIMD::get_invert() const {
+	return _invert;
+}
+
+void VoxelGeneratorFastNoiseSIMD::set_noise_offset(float noise_offset){
+	_noise_offset = noise_offset;
+}
+
+float VoxelGeneratorFastNoiseSIMD::get_noise_offset() const {
+	return _noise_offset;
+}
+
+void VoxelGeneratorFastNoiseSIMD::set_noise(Ref<FastNoiseSIMD> noise) {
+	_noise = noise;
+}
+
+Ref<FastNoiseSIMD> VoxelGeneratorFastNoiseSIMD::get_noise() const {
+	return _noise;
 }
 
 void VoxelGeneratorFastNoiseSIMD::generate_block(VoxelBlockRequest& input) {
@@ -199,16 +203,15 @@ void VoxelGeneratorFastNoiseSIMD::generate_block(VoxelBlockRequest& input) {
 					if(_bias_mode==Linear) {
 						bias = 2.f * t - 1.f;
 					} else if (_bias_mode==Bounded) {
-						//bias = step(.1f,t) + step(.9f,t) - 1.f;
 						bias = Math::smoothstep(0.f, .1f, t) + Math::smoothstep(.9f, 1.f, t)-1.f;
 					} else { 
 						bias = 0.f;
 					}
 
 					if(_invert)
-						d = (_value_adjustment-n + bias) * _iso_scale;
+						d = (_noise_offset-n + bias) * _iso_scale;
 					else
-						d = (n + _value_adjustment + bias) * _iso_scale;
+						d = (n + _noise_offset + bias) * _iso_scale;
 
 					// Set voxel
 					if (_channel == VoxelBuffer::CHANNEL_SDF) {
@@ -237,26 +240,9 @@ void VoxelGeneratorFastNoiseSIMD::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("get_channel"), &VoxelGeneratorFastNoiseSIMD::get_channel);
 	ADD_PROPERTY(PropertyInfo(Variant::INT, "channel", PROPERTY_HINT_ENUM, VoxelBuffer::CHANNEL_ID_HINT_STRING), "set_channel", "get_channel");
 
-
-	ClassDB::bind_method(D_METHOD("set_invert", "invert"), &VoxelGeneratorFastNoiseSIMD::set_invert);
-	ClassDB::bind_method(D_METHOD("get_invert"), &VoxelGeneratorFastNoiseSIMD::get_invert);
-	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "invert"), "set_invert", "get_invert");
-
 	ClassDB::bind_method(D_METHOD("set_bias_mode", "mode"), &VoxelGeneratorFastNoiseSIMD::set_bias_mode);
 	ClassDB::bind_method(D_METHOD("get_bias_mode"), &VoxelGeneratorFastNoiseSIMD::get_bias_mode);
 	ADD_PROPERTY(PropertyInfo(Variant::INT, "bias_mode", PROPERTY_HINT_ENUM, "Linear,Bounded,None"), "set_bias_mode", "get_bias_mode");
-
-	ClassDB::bind_method(D_METHOD("set_iso_scale", "scale"), &VoxelGeneratorFastNoiseSIMD::set_iso_scale);
-	ClassDB::bind_method(D_METHOD("get_iso_scale"), &VoxelGeneratorFastNoiseSIMD::get_iso_scale);
-	ADD_PROPERTY(PropertyInfo(Variant::REAL, "iso_scale", PROPERTY_HINT_RANGE, ".1,100,0.1"), "set_iso_scale", "get_iso_scale");
-
-	ClassDB::bind_method(D_METHOD("set_value_adjustment", "value_adjustment"), &VoxelGeneratorFastNoiseSIMD::set_value_adjustment);
-	ClassDB::bind_method(D_METHOD("get_value_adjustment"), &VoxelGeneratorFastNoiseSIMD::get_value_adjustment);
-	ADD_PROPERTY(PropertyInfo(Variant::REAL, "value_adjustment", PROPERTY_HINT_RANGE, "-2,2,0.01"), "set_value_adjustment", "get_value_adjustment");
-
-	ClassDB::bind_method(D_METHOD("set_noise", "noise"), &VoxelGeneratorFastNoiseSIMD::set_noise);
-	ClassDB::bind_method(D_METHOD("get_noise"), &VoxelGeneratorFastNoiseSIMD::get_noise);
-	ADD_PROPERTY(PropertyInfo(Variant::OBJECT, "noise", PROPERTY_HINT_RESOURCE_TYPE, "FastNoiseSIMD"), "set_noise", "get_noise");
 
 	ClassDB::bind_method(D_METHOD("set_height_start", "hstart"), &VoxelGeneratorFastNoiseSIMD::set_height_start);
 	ClassDB::bind_method(D_METHOD("get_height_start"), &VoxelGeneratorFastNoiseSIMD::get_height_start);
@@ -265,6 +251,22 @@ void VoxelGeneratorFastNoiseSIMD::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("set_height_range", "hrange"), &VoxelGeneratorFastNoiseSIMD::set_height_range);
 	ClassDB::bind_method(D_METHOD("get_height_range"), &VoxelGeneratorFastNoiseSIMD::get_height_range);
 	ADD_PROPERTY(PropertyInfo(Variant::INT, "height_range"), "set_height_range", "get_height_range");
+
+	ClassDB::bind_method(D_METHOD("set_iso_scale", "scale"), &VoxelGeneratorFastNoiseSIMD::set_iso_scale);
+	ClassDB::bind_method(D_METHOD("get_iso_scale"), &VoxelGeneratorFastNoiseSIMD::get_iso_scale);
+	ADD_PROPERTY(PropertyInfo(Variant::REAL, "iso_scale", PROPERTY_HINT_RANGE, ".1,100,0.1"), "set_iso_scale", "get_iso_scale");
+
+	ClassDB::bind_method(D_METHOD("set_invert", "invert"), &VoxelGeneratorFastNoiseSIMD::set_invert);
+	ClassDB::bind_method(D_METHOD("get_invert"), &VoxelGeneratorFastNoiseSIMD::get_invert);
+	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "invert"), "set_invert", "get_invert");
+
+	ClassDB::bind_method(D_METHOD("set_noise_offset", "noise_offset"), &VoxelGeneratorFastNoiseSIMD::set_noise_offset);
+	ClassDB::bind_method(D_METHOD("get_noise_offset"), &VoxelGeneratorFastNoiseSIMD::get_noise_offset);
+	ADD_PROPERTY(PropertyInfo(Variant::REAL, "noise_offset", PROPERTY_HINT_RANGE, "-2,2,0.01"), "set_noise_offset", "get_noise_offset");
+
+	ClassDB::bind_method(D_METHOD("set_noise", "noise"), &VoxelGeneratorFastNoiseSIMD::set_noise);
+	ClassDB::bind_method(D_METHOD("get_noise"), &VoxelGeneratorFastNoiseSIMD::get_noise);
+	ADD_PROPERTY(PropertyInfo(Variant::OBJECT, "noise", PROPERTY_HINT_RESOURCE_TYPE, "FastNoiseSIMD"), "set_noise", "get_noise");
 
 }
 
