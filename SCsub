@@ -24,10 +24,7 @@ for f in files:
 
 if 'fastnoise_simd' in env.module_list:
     print ("FastNoiseSIMD found. Enabling VoxelGeneratorFastNoiseSIMD.")
-    if env.msvc:
-        env_voxel.Append(CXXFLAGS=['/D FASTNOISESIMD_ENABLED'])
-    else:
-        env_voxel.Append(CXXFLAGS=['-D FASTNOISESIMD_ENABLED'])
+    env_voxel.Append(CXXFLAGS=['-DFASTNOISESIMD_ENABLED'])
 
 # Ignored clang warnings because Godot's codebase is old and isn't using override yet
 if env['platform'] == 'osx' or env['platform'] == 'android':
